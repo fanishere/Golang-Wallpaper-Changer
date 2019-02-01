@@ -4,9 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
+	"time"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -31,11 +35,7 @@ type PostData struct {
 }
 
 func main() {
-
-	// getRandomImage(getRedditPosts())
-	setWallpaper()
-	//i.imgur.com, i.redd.it
-
+	setWallpaper(getRandomImage(getRedditPosts()))
 }
 
 func getRedditPosts() ([]PostData, error) {
@@ -61,57 +61,81 @@ func getRedditPosts() ([]PostData, error) {
 	return data.MetaData.Posts, nil
 }
 
-func getRandomImage(posts []PostData, err error) error {
+func getRandomImage(posts []PostData, err error) (string, error) {
 	if err != nil {
-		fmt.Println(err)
+		return "", err
 	}
-	fmt.Printf("%s \n", posts[0].Post)
 
-	return downloadImage(posts[1].Post.Link)
+	rand.Seed(time.Now().Unix())
+	var imagePost *PostData
+
+	for imagePost == nil {
+		randPost := posts[rand.Intn(len(posts))]
+		if (randPost.Post.Domain == "i.imgur.com") || (randPost.Post.Domain == "i.redd.it") {
+			imagePost = &randPost
+		}
+
+	}
+
+	return downloadImage(imagePost.Post.Link, imagePost.Post.Title)
 
 }
 
-func downloadImage(imgURL string) error {
-	out, err := os.Create("wallpaper.jpg")
+func downloadImage(imgURL, imgTitle string) (string, error) {
+	filename := ImageFileName(imgTitle)
+	out, err := os.Create(filename)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer out.Close()
 
 	res, err := http.Get(imgURL)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer res.Body.Close()
 
 	_, err = io.Copy(out, res.Body)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return filename, nil
 }
 
-func setWallpaper() error {
-	cacheDir, _ := os.Getwd()
+// ImageFileName takes a Reddit Post Title and turns it into an image filename like "wallpaper.jpg"
+func ImageFileName(imgTitle string) string {
 
-	filename := filepath.Join(cacheDir, filepath.Base("wallpaper.jpg"))
+	windowsIllegal := regexp.MustCompile("[<>:\"/\\|?,*]")
+	cleanedImageTitle := windowsIllegal.ReplaceAllString(imgTitle, "")
 
-	user32 := windows.NewLazyDLL("user32.dll")
-	systemSettings := user32.NewProc("SystemParametersInfoW")
-	filenameUTF16, err := windows.UTF16PtrFromString(filename)
+	filename := strings.Replace(cleanedImageTitle, " ", "-", -1) + ".jpg"
 
+	return filename
+}
+
+func setWallpaper(filename string, err error) error {
 	if err != nil {
-		fmt.Println("err")
+		fmt.Println(err)
 		return err
 	}
-	systemSettings.Call(
-		uintptr(0x0014), //pointer to set desktop wallpaper
-		uintptr(0x0000), //uiparam is 0
-		uintptr(unsafe.Pointer(filenameUTF16)),
-		uintptr(0x01|0x02),
+
+	cacheDir, _ := os.Getwd()
+	filepath := filepath.Join(cacheDir, filename)
+
+	user32 := windows.NewLazyDLL("user32.dll")
+	systemParametersInfo := user32.NewProc("SystemParametersInfoW")
+	filenameUTF16, err := windows.UTF16PtrFromString(filepath)
+
+	if err != nil {
+		return err
+	}
+	systemParametersInfo.Call(
+		uintptr(0x0014),                        //uiAction = pointer to set desktop wallpaper
+		uintptr(0x0000),                        //uiparam = 0
+		uintptr(unsafe.Pointer(filenameUTF16)), //pointer to wallpaper file
+		uintptr(0x01|0x02),                     //fWinIni broadcasts change to user profile spiUpdateINIFile | spifSendChange
 	)
 
-	fmt.Println(filenameUTF16)
 	return nil
 }
