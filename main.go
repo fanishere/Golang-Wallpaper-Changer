@@ -87,6 +87,12 @@ func getRandomImage(posts []PostData, err error) (string, error) {
 
 func downloadImage(imgURL, imgTitle string) (string, error) {
 	filename := ImageFileName(imgTitle)
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	os.Chdir(filepath.Join(currentDir, "wallpapers"))
 	out, err := os.Create(filename)
 	if err != nil {
 		return "", err

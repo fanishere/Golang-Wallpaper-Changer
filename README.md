@@ -2,7 +2,7 @@
 
 ## What Does This Do?
 
-This app gets the top 25 posts from https://www.reddit.com/r/wallpaper/hot/, picks a random post, downloads the image, and sets it as the desktop background on Windows.
+This app gets the top 25 posts from https://www.reddit.com/r/wallpaper/hot/, picks a random post, downloads the image into the wallpapers directory, and sets it as the desktop background on Windows.
 
 ## How To Use
 
