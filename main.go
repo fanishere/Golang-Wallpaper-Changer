@@ -6,6 +6,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
+	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 // RedditResponse is Reddit outer response data
@@ -28,7 +32,8 @@ type PostData struct {
 
 func main() {
 
-	getRandomImage(getRedditPosts())
+	// getRandomImage(getRedditPosts())
+	setWallpaper()
 	//i.imgur.com, i.redd.it
 
 }
@@ -84,5 +89,29 @@ func downloadImage(imgURL string) error {
 		return err
 	}
 
+	return nil
+}
+
+func setWallpaper() error {
+	cacheDir, _ := os.Getwd()
+
+	filename := filepath.Join(cacheDir, filepath.Base("wallpaper.jpg"))
+
+	user32 := windows.NewLazyDLL("user32.dll")
+	systemSettings := user32.NewProc("SystemParametersInfoW")
+	filenameUTF16, err := windows.UTF16PtrFromString(filename)
+
+	if err != nil {
+		fmt.Println("err")
+		return err
+	}
+	systemSettings.Call(
+		uintptr(0x0014), //pointer to set desktop wallpaper
+		uintptr(0x0000), //uiparam is 0
+		uintptr(unsafe.Pointer(filenameUTF16)),
+		uintptr(0x01|0x02),
+	)
+
+	fmt.Println(filenameUTF16)
 	return nil
 }
