@@ -38,6 +38,8 @@ func main() {
 	setWallpaper(getRandomImage(getRedditPosts()))
 }
 
+// getRedditPosts gets the top 25 posts from /r/wallpaper,
+// and parses them into structs
 func getRedditPosts() ([]PostData, error) {
 	url := "https://www.reddit.com/r/wallpaper/hot/.json?"
 	client := http.Client{}
@@ -61,6 +63,8 @@ func getRedditPosts() ([]PostData, error) {
 	return data.MetaData.Posts, nil
 }
 
+// getRandomImage gets a random image from the list of reddit posts
+// and calls downloadImage on it to download
 func getRandomImage(posts []PostData, err error) (string, error) {
 	if err != nil {
 		return "", err
